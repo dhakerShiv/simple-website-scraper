@@ -38,10 +38,10 @@ function logout () {
 
 function importEntries (data, contentTypeUid = config.contentUid) {
   print(`\rImporting Entry...`)
-	const options = {
-		url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/',
-		method: "POST",
-		headers : {
+  const options = {
+    url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/',
+    method: "POST",
+    headers : {
       "api_key"      : config.api_key,
       "authtoken"    : config.authtoken,
       'Content-Type' : 'application/json'
@@ -59,21 +59,21 @@ function importEntries (data, contentTypeUid = config.contentUid) {
 
 function download (uri, filename) {
   print(`\rDownloading ${filename}`)
-	return new Promise( (resolve, reject) => {
-	  request.head(uri, function(err, res, body) {
+  return new Promise( (resolve, reject) => {
+    request.head(uri, function(err, res, body) {
       request(uri)
       .pipe(fs.createWriteStream("./media/" + filename))
-	    .on('close', function(){
-	    	resolve({
+      .on('close', function(){
+        resolve({
           "filename": filename,
           "url"     : uri
         })
-	    })
-	    .on('error', function(err){
-	    	reject(err)
-	    })
-	  })
-	})		
+      })
+      .on('error', function(err){
+        reject(err)
+      })
+    })
+  })    
 }
 
 function getAssets(url) {
@@ -107,10 +107,10 @@ function uploadAssets(filename, url) {
   
  return new Promise( (resolve, reject) => {
   let assets = request.post(requestOptions, function (err, res, body) {
-  	if (!err && res.statusCode == 201 && body && body.asset)
-  		return resolve(body)
+    if (!err && res.statusCode == 201 && body && body.asset)
+      return resolve(body)
     
-  	reject(err)
+    reject(err)
   })
   .form()
 
