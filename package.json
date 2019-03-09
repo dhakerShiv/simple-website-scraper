@@ -1,0 +1,35 @@
+{
+  "name": "simple-website-scraper",
+  "version": "0.1.10",
+  "description": "Contentstack specific framework to scrap data from a website and to Contentstack",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "dhakerShiv",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dhakerShiv/simple-website-scraper.git"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "fs": "0.0.1-security",
+    "html-attributes-remover": "^1.0.4",
+    "puppeteer": "^1.11.0",
+    "request": "^2.88.0",
+    "request-promise-native": "^1.0.5",
+    "url-parse": "^1.4.4",
+    "winston": "^3.2.1",
+    "write-json-file": "^3.0.2"
+  },
+  "keywords": [
+    "scrapper",
+    "urls",
+    "website"
+  ],
+  "bugs": {
+    "url": "https://github.com/dhakerShiv/simple-website-scraper/issues"
+  },
+  "homepage": "https://github.com/dhakerShiv/simple-website-scraper#readme"
+}
