@@ -4,10 +4,8 @@ const request       = require('request-promise-native')
 const URL           = require('url-parse')
 const config        = require(basePath + '/config.json')
 const writeJsonFile = require('write-json-file')
-const removeAttr    = require('html-attributes-remover').default
 const urlsArray     = require(basePath + '/urls.json').urls
 const puppeteer     = require('puppeteer')
-const removeattr    = new removeAttr()
 const helper        = require('./helper')
 const fs            = require('fs')
 const winston       = require('winston')
@@ -19,26 +17,29 @@ let browserInstance
 let assetsJson
 
 const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.json(),
+  level     : 'info',
+  format    : winston.format.json(),
   transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' })
+    new winston.transports.File({ 
+      filename: 'error.log', level: 'error'
+    })
   ]
 })
 
 async function schemaReader (schemaFile, dependency, contenttypeUid) {
-  let schema = require(basePath + '/' + schemaFile)
+  let schema         = require(basePath + '/' + schemaFile)
   let schemaResponse = {}
+  let mapperJSON     = {}
   let resposne
-  let mapperJSON = {}
 
   if (dependency && config.import)
   {
     try {
       mapperJSON = require(basePath + '/mappers/' + schemaFile)
       let title  = eval(schema.title) 
-        if (mapperJSON[title])
-          return mapperJSON[title].uid
+      
+      if (mapperJSON[title])
+        return mapperJSON[title].uid
     } catch (ex) {
         mapperJSON = {}
     }
@@ -53,7 +54,8 @@ async function schemaReader (schemaFile, dependency, contenttypeUid) {
       if (typeof schema[schemaKeys[i]] === 'object')
         resposne = await schemaReader(schema[schemaKeys[i]].schemaFile, true, schema[schemaKeys[i]].uid)
 
-      resposne = await eval(schema[schemaKeys[i]])
+      if (typeof schema[schemaKeys[i]] !== 'object')
+        resposne = await eval(schema[schemaKeys[i]])
       
       schemaResponse[schemaKeys[i]] = resposne
     }
@@ -120,8 +122,8 @@ async function startProcess () {
   if (!config.authtoken || config.authtoken == "")
   {
     config.authtokenExists = false
-    let response = await helper.login()
-    config.authtoken = response.user.authtoken  
+    let response           = await helper.login()
+    config.authtoken       = response.user.authtoken  
   }
   
   return scrapeAll(urlsArray)
@@ -192,13 +194,13 @@ async function getOnePage(url) {
 function errorHandler (err) {
   logger.log({
     level: 'error',
+    datetime: new Date().toLocaleString(),
     message: err.message
   })
   failedUrls.push(currentUrl)
 }
 
 async function getHtml (url) {
-
   if (!config.ssr)
   {
     const options = {
@@ -208,13 +210,16 @@ async function getHtml (url) {
   }
     
   let tab = await browserInstance.newPage()
+
   await tab.goto(url, {
     waitUntil: 'networkidle0',
-    timeout: 120000,
+    timeout  : 120000,
   })
-  let page = await tab.content();
-  await tab.close();
-  return page;
+
+  let page = await tab.content()
+  await tab.close()
+
+  return page
 }
 
 async function rteHandler (dom) {
@@ -239,7 +244,7 @@ async function rteHandler (dom) {
   
   for (let i = 0; i < imags.length; i++)
   {
-    src      = $(imags[i]).attr('src')
+    src = $(imags[i]).attr('src')
 
     if ((/\.(gif|jpg|jpeg|tiff|png|exif|bmp|webp|bat|bpg)$/i).test(src))
     {
@@ -248,12 +253,12 @@ async function rteHandler (dom) {
     }
   }
 
-  return removeattr.remove(dom.html())
+  return dom.html()
 }
 
 function seoHandler () {
   seo = {}
-  seo.title       = $('title').text()
+  seo.title       = $('meta[name=title]').attr("content")
   seo.description = $('meta[name=description]').attr("content")
   seo.keywords    = $('meta[name=keywords]').attr("content")
   return seo
@@ -280,16 +285,14 @@ async function assetsHandler (url) {
   if (!url)
     return ""
 
-  let fileName = url.split('/')[url.split('/').length - 1]
-  
+  let fileName      = url.split('/')[url.split('/').length - 1]
   let checkFileName = fileName.replace(/[,=]/ig,"_")
 
   if (assetsJson[checkFileName])
     return assetsJson[checkFileName]
 
-  response = await helper.getAndUploadAssets(url)
-
-  let prefix = "https://images.contentstack.io"
+  const response = await helper.getAndUploadAssets(url)
+  let prefix     = "https://images.contentstack.io"
 
   if (/.pdf$/.test(fileName))
     prefix = "https://assets.contentstack.io"
