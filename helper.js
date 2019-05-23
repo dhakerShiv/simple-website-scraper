@@ -1,13 +1,14 @@
-const basePath= "../.."
-const config  = require(basePath + '/config.json')
-const request = require('request-promise-native')
-const fs      = require('fs')
+const basePath   = '../..'
+const config     = require(basePath + '/config.json')
+const request    = require('request-promise-native')
+const fs         = require('fs')
+const cmsBaseUrl = 'https://api.contentstack.io/v3'
 
 function login() {
   print(`\rLogging in...`)
   const options = { 
     method : 'POST',
-    url    : 'https://api.contentstack.io/v3/user-session',
+    url    : cmsBaseUrl + '/user-session',
     headers: {
       'content-type': 'application/json' 
     },
@@ -26,7 +27,7 @@ function logout () {
   print(`\rLogging out...`)
   const options = { 
     method : 'DELETE',
-    url    : 'https://api.contentstack.io/v3/user-session',
+    url    : cmsBaseUrl + '/user-session',
     headers: {
       'content-type': 'application/json',
       'authtoken'   : config.authtoken,
@@ -38,19 +39,19 @@ function logout () {
 
 function importEntries (data, contentTypeUid = config.contentUid) {
   print(`\rImporting Entry...`)
-  const options = {
-    url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/',
-    method: "POST",
-    headers : {
-      "api_key"      : config.api_key,
-      "authtoken"    : config.authtoken,
+	const options = {
+		url    : cmsBaseUrl + '/content_types/' + contentTypeUid + '/entries/',
+		method : 'POST',
+		headers: {
+      'api_key'      : config.api_key,
+      'authtoken'    : config.authtoken,
       'Content-Type' : 'application/json'
     },
     body: {
       entry: data
     },
     qs: {
-      "locale": config.locale
+      'locale': config.locale
     },
     json: true
   }
@@ -59,25 +60,23 @@ function importEntries (data, contentTypeUid = config.contentUid) {
 
 function download (uri, filename) {
   print(`\rDownloading ${filename}`)
-  return new Promise( (resolve, reject) => {
-    request.head(uri, function(err, res, body) {
-      request(uri)
-      .pipe(fs.createWriteStream("./media/" + filename))
-      .on('close', function(){
-        resolve({
-          "filename": filename,
-          "url"     : uri
-        })
-      })
-      .on('error', function(err){
-        reject(err)
+	return new Promise( (resolve, reject) => {
+    request(uri)
+    .pipe(fs.createWriteStream('./media/' + filename))
+    .on('close', function(){
+      resolve({
+        'filename': filename,
+        'url'     : uri
       })
     })
-  })    
+    .on('error', function(err){
+      reject(err)
+    })
+	})		
 }
 
 function getAssets(url) {
-  const filename  = url.split("/")[url.split("/").length-1]
+  const filename  = url.split('/')[url.split('/').length-1]
 
   if (!/^http|^https|^www./.test(url))
     url = config.baseUrl + url
@@ -93,7 +92,7 @@ function getAndUploadAssets (url) {
 function uploadAssets(filename, url) {
   print(`\rUploading ${filename}`)
   const requestOptions = {
-    uri    : "https://api.contentstack.io/v3/assets",
+    uri    : cmsBaseUrl + '/assets',
     headers: {
       api_key   : config.api_key,
       authtoken : config.authtoken
@@ -114,8 +113,8 @@ function uploadAssets(filename, url) {
   })
   .form()
 
-  assets.append('asset[upload]', fs.createReadStream("./media/" + filename))
-  assets.append("asset[parent_uid]", config.parentUid)
+  assets.append('asset[upload]', fs.createReadStream('./media/' + filename))
+  assets.append('asset[parent_uid]', config.parentUid)
  })
 }
 

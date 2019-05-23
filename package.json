@@ -1,6 +1,6 @@
 {
   "name": "simple-website-scraper",
-  "version": "0.1.10",
+  "version": "1.0.0",
   "description": "Contentstack specific framework to scrap data from a website and to Contentstack",
   "main": "index.js",
   "scripts": {
@@ -31,5 +31,6 @@
   "bugs": {
     "url": "https://github.com/dhakerShiv/simple-website-scraper/issues"
   },
-  "homepage": "https://github.com/dhakerShiv/simple-website-scraper#readme"
+  "homepage": "https://github.com/dhakerShiv/simple-website-scraper#readme",
+  "devDependencies": {}
 }
