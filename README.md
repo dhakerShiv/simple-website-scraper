@@ -43,9 +43,9 @@ authors.json (schemaFile) : we will map page elements that needs to be scrapped
 ```json
 {
   "title": "$('title')",
-  "url": "getRelativeUrl()"
+  "url": "getRelativeUrl()",
   "name": "$('.author_name').text()",
-  "profile_description": "rteHandler($('.author_description'))"
+  "profile_description": "rteHandler($('.author_description'))",
   "seo": {
     "title": "$('meta[name=title]').attr('content')",
     "description": "$('meta[name=description]').attr('content')",
