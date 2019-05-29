@@ -1,6 +1,6 @@
 {
   "name": "simple-website-scraper",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Contentstack specific framework to scrap data from a website and to Contentstack",
   "main": "index.js",
   "scripts": {

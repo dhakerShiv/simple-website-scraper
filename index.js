@@ -14,32 +14,29 @@ let relativePageUrl
 let currentUrl
 const failedUrls    = []
 let browserInstance
-let assetsJson
+let assetsJson = {}
 
 const logger = winston.createLogger({
-  level     : 'info',
-  format    : winston.format.json(),
+  level: 'info',
+  format: winston.format.json(),
   transports: [
-    new winston.transports.File({ 
-      filename: 'error.log', level: 'error'
-    })
+    new winston.transports.File({ filename: 'error.log', level: 'error' })
   ]
 })
 
 async function schemaReader (schemaFile, dependency, contenttypeUid) {
-  let schema         = require(basePath + '/' + schemaFile)
+  let schema = require(basePath + '/' + schemaFile)
   let schemaResponse = {}
-  let mapperJSON     = {}
   let resposne
+  let mapperJSON = {}
 
   if (dependency && config.import)
   {
     try {
       mapperJSON = require(basePath + '/mappers/' + schemaFile)
       let title  = eval(schema.title) 
-      
-      if (mapperJSON[title])
-        return mapperJSON[title].uid
+        if (mapperJSON[title])
+          return mapperJSON[title].uid
     } catch (ex) {
         mapperJSON = {}
     }
@@ -122,8 +119,8 @@ async function startProcess () {
   if (!config.authtoken || config.authtoken == "")
   {
     config.authtokenExists = false
-    let response           = await helper.login()
-    config.authtoken       = response.user.authtoken  
+    let response = await helper.login()
+    config.authtoken = response.user.authtoken  
   }
   
   return scrapeAll(urlsArray)
@@ -194,13 +191,13 @@ async function getOnePage(url) {
 function errorHandler (err) {
   logger.log({
     level: 'error',
-    datetime: new Date().toLocaleString(),
     message: err.message
   })
   failedUrls.push(currentUrl)
 }
 
 async function getHtml (url) {
+
   if (!config.ssr)
   {
     const options = {
@@ -210,16 +207,13 @@ async function getHtml (url) {
   }
     
   let tab = await browserInstance.newPage()
-
   await tab.goto(url, {
     waitUntil: 'networkidle0',
-    timeout  : 120000,
+    timeout: 120000,
   })
-
-  let page = await tab.content()
-  await tab.close()
-
-  return page
+  let page = await tab.content();
+  await tab.close();
+  return page;
 }
 
 async function rteHandler (dom) {
@@ -244,7 +238,7 @@ async function rteHandler (dom) {
   
   for (let i = 0; i < imags.length; i++)
   {
-    src = $(imags[i]).attr('src')
+    src      = $(imags[i]).attr('src')
 
     if ((/\.(gif|jpg|jpeg|tiff|png|exif|bmp|webp|bat|bpg)$/i).test(src))
     {
@@ -258,7 +252,7 @@ async function rteHandler (dom) {
 
 function seoHandler () {
   seo = {}
-  seo.title       = $('meta[name=title]').attr("content")
+  seo.title       = $('title').text()
   seo.description = $('meta[name=description]').attr("content")
   seo.keywords    = $('meta[name=keywords]').attr("content")
   return seo
@@ -285,14 +279,16 @@ async function assetsHandler (url) {
   if (!url)
     return ""
 
-  let fileName      = url.split('/')[url.split('/').length - 1]
+  let fileName = url.split('/')[url.split('/').length - 1]
+  
   let checkFileName = fileName.replace(/[,=]/ig,"_")
 
   if (assetsJson[checkFileName])
     return assetsJson[checkFileName]
 
-  const response = await helper.getAndUploadAssets(url)
-  let prefix     = "https://images.contentstack.io"
+  response = await helper.getAndUploadAssets(url)
+
+  let prefix = "https://images.contentstack.io"
 
   if (/.pdf$/.test(fileName))
     prefix = "https://assets.contentstack.io"
@@ -307,4 +303,13 @@ async function assetsHandler (url) {
   return assetsJson[response.asset.filename]
 }
 
-exports.scrap = startProcess
+exports.scrap             = startProcess
+exports.puppeteer         = puppeteer
+exports.logger            = logger
+exports.imageHandler      = imageHandler
+exports.assetsHandler     = assetsHandler
+exports.getAndUploadAssets= helper.getAndUploadAssets
+exports.rteHandler        = rteHandler
+exports.importEntries     = helper.importEntries
+exports.getHtml           = getHtml
+exports.print             = helper.print
