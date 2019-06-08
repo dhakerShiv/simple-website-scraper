@@ -46,11 +46,7 @@ authors.json (schemaFile) : we will map page elements that needs to be scrapped
   "url": "getRelativeUrl()",
   "name": "$('.author_name').text()",
   "profile_description": "rteHandler($('.author_description'))",
-  "seo": {
-    "title": "$('meta[name=title]').attr('content')",
-    "description": "$('meta[name=description]').attr('content')",
-    "keywords": "$('meta[name=keywords]').attr('content')"
-  }
+  "seo": "seoHandler()"
 }
 ```
 
@@ -74,9 +70,9 @@ You have access to some internal functions like -
 ```
 seoHandler: It will return meta title, keywords and descriptions in following format
  {
- 	"title": "current page meta title",
-	"description": "current page meta description",
-	"keywords": "current page meta keywords",
+    "title": "current page meta title",
+    "description": "current page meta description",
+    "keywords": "current page meta keywords",
  }
  
  getRelativeUrl: It will return relativePageUrl
