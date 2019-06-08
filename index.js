@@ -47,9 +47,35 @@ async function schemaReader (schemaFile, dependency, contenttypeUid) {
   for (let i = 0; i < schemaKeys.length; i++)
   {
     try {
-      // Handle dependency
-      if (typeof schema[schemaKeys[i]] === 'object')
-        resposne = await schemaReader(schema[schemaKeys[i]].schemaFile, true, schema[schemaKeys[i]].uid)
+     // Handle dependency
+     if (typeof schema[schemaKeys[i]] === 'object')
+     {
+       if (schema[schemaKeys[i]].multiple)
+       {
+         if (!schema[schemaKeys[i]].selector)
+           console.log(`Error: Please provide a selector which is applicable for each element in ${schemaKeys[i]} object, inside ${schemaFile} file`) || process.exit()
+
+         const childNodes = await eval(schema[schemaKeys[i]].selector)
+         const parentNode = childNodes.parent()
+         const childsEntryIds = []
+         let childId
+         
+         for (let j = 0; j < childNodes.length; j++)
+         {
+           childNodes.remove()
+           parentNode.append(childNodes[j])
+           childId = await schemaReader(schema[schemaKeys[i]].schemaFile, true, schema[schemaKeys[i]].uid)
+           childsEntryIds.push(childId)
+         }
+
+         resposne = childsEntryIds
+       }
+
+       if (!schema[schemaKeys[i]].multiple)
+       {
+         resposne = await schemaReader(schema[schemaKeys[i]].schemaFile, true, schema[schemaKeys[i]].uid)
+       }
+     }
 
       if (typeof schema[schemaKeys[i]] !== 'object')
         resposne = await eval(schema[schemaKeys[i]])
