@@ -1,7 +1,9 @@
-const basePath= "../.."
-const config  = require(basePath + '/config.json')
-const request = require('request-promise-native')
-const fs      = require('fs')
+const basePath  = path.dirname(require.main.filename)
+const config    = require(basePath + '/config.json')
+const request   = require('request-promise-native')
+const fs        = require('fs')
+const path      = require('path')
+const apiRunner = require(path.join(__dirname, 'apis')).apiRunner
 
 function login() {
   print(`\rLogging in...`)
@@ -15,7 +17,7 @@ function login() {
       user: {
         email   : config.email,
         password: config.password
-      } 
+      }
     },
     json: true 
   }
@@ -36,11 +38,11 @@ function logout () {
   return request(options)
 }
 
-function importEntries (data, contentTypeUid = config.contentUid) {
+function importEntries (data, contentTypeUid = config.contentUid, method = "POST") {
   print(`\rImporting Entry...`)
 	const options = {
 		url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/',
-		method: "POST",
+		method,
 		headers : {
       "api_key"      : config.api_key,
       "authtoken"    : config.authtoken,
@@ -60,37 +62,36 @@ function importEntries (data, contentTypeUid = config.contentUid) {
 function download (uri, filename) {
   print(`\rDownloading ${filename}`)
 	return new Promise( (resolve, reject) => {
-	  request.head(uri, function(err, res, body) {
-      request(uri)
-      .pipe(fs.createWriteStream("./media/" + filename))
-	    .on('close', function(){
-	    	resolve({
-          "filename": filename,
-          "url"     : uri
-        })
-	    })
-	    .on('error', function(err){
-	    	reject(err)
-	    })
-	  })
-	})		
+    request(uri)
+    .pipe(fs.createWriteStream("./media/" + filename))
+    .on('close', function(){
+      resolve()
+    })
+    .on('error', function(err){
+      reject(err)
+    })
+	})
 }
 
-function getAssets(url) {
+async function getAndUploadAssets (url) {
   const filename  = url.split("/")[url.split("/").length-1]
 
   if (!/^http|^https|^www./.test(url))
     url = config.baseUrl + url
-  
+
+  let headerInfo = await request.head(url)
+
+  // Call modifyAssetName node api
+  const newFilename = await apiRunner('modifyAssetName', {}, headerInfo)
+
+  if (newFilename)
+    filename = newFilename
+
   return download(url, filename)
+  .then( (data) => uploadAssets(filename))
 }
 
-function getAndUploadAssets (url) {
-  return getAssets(url)
-  .then( (data) => uploadAssets(data.filename, data.url))
-}
-
-function uploadAssets(filename, url) {
+function uploadAssets(filename) {
   print(`\rUploading ${filename}`)
   const requestOptions = {
     uri    : "https://api.contentstack.io/v3/assets",

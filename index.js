@@ -1,31 +1,44 @@
-const basePath      = "../.."
+const path          = require('path')
+const basePath      = path.dirname(require.main.filename)
 const cheerio       = require('cheerio')
 const request       = require('request-promise-native')
 const URL           = require('url-parse')
-const config        = require(basePath + '/config.json')
+const config        = require(path.join(basePath, 'config.json'))
 const writeJsonFile = require('write-json-file')
-const urlsArray     = require(basePath + '/urls.json').urls
+const urlsArray     = require(path.join(basePath, 'urls.json')).urls
 const puppeteer     = require('puppeteer')
-const helper        = require('./helper')
+const helper        = require(path.join(__dirname, 'helper'))
 const fs            = require('fs')
 const winston       = require('winston')
+const apiRunner     = require(path.join(__dirname, 'apis')).apiRunner
 let $
 let relativePageUrl
 let currentUrl
-const failedUrls    = []
 let browserInstance
-let assetsJson = {}
-
-const logger = winston.createLogger({
+const failedUrls    = []
+let assetsJson      = {}
+const logger        = winston.createLogger({
   level: 'info',
   format: winston.format.json(),
   transports: [
     new winston.transports.File({ filename: 'error.log', level: 'error' })
   ]
 })
+const actions       = {
+  errorHandler,
+  logger,
+  puppeteer,
+  imageHandler,
+  assetsHandler,
+  getAndUploadAssets: helper.getAndUploadAssets,
+  rteHandler,
+  importEntries: helper.importEntries,
+  getHtml,
+  print: helper.print
+}
 
 async function schemaReader (schemaFile, dependency, contenttypeUid) {
-  let schema = require(basePath + '/' + schemaFile)
+  let schema = require(path.join(basePath, schemaFile))
   let schemaResponse = {}
   let resposne
   let mapperJSON = {}
@@ -33,10 +46,11 @@ async function schemaReader (schemaFile, dependency, contenttypeUid) {
   if (dependency && config.import)
   {
     try {
-      mapperJSON = require(basePath + '/mappers/' + schemaFile)
-      let title  = eval(schema.title) 
-        if (mapperJSON[title])
-          return mapperJSON[title].uid
+      mapperJSON = require(path.join(basePath, 'mappers', schemaFile))
+      let title  = eval(schema.title)
+      
+      if (mapperJSON[title])
+        return mapperJSON[title].uid
     } catch (ex) {
         mapperJSON = {}
     }
@@ -92,32 +106,23 @@ async function schemaReader (schemaFile, dependency, contenttypeUid) {
 
   if (config.import)
   {
+    // Call preImport node api
+    schemaResponse       = await apiRunner('preImport', actions, schemaResponse)
     let importedResponse = await helper.importEntries(schemaResponse, contenttypeUid)
 
     if (dependency)
     {
-      mapperJSON[importedResponse.entry.title] = {
-        uid: importedResponse.entry.uid
-      }
-  
       uid = importedResponse.entry.uid
-      await writeJsonFile("./mappers/" + schemaFile, mapperJSON)
+      mapperJSON[importedResponse.entry.title] = { uid }
+  
+      await writeJsonFile(path.join("mappers", schemaFile), mapperJSON)
     }
   }
 
-  let fileInParts = schemaFile.split('.')
-  fileInParts.pop()
-  let dir = "/" + fileInParts.join('')
+  const dir      = schemaFile.split('.')[0]
+  const fileName = (schemaResponse.title || relativePageUrl).replace(/[^a-zA-Z]/g, ' ').trim().replace(/ +/g, '-')
 
-  let fileName = relativePageUrl.replace(/\//g, "-")
-
-  if (fileName.charAt(0) == '-')
-    fileName = fileName.substr(1)
-
-  if (fileName.charAt(fileName.length-1) == '-')
-    fileName = fileName.substr(0, fileName.length-1)
-
-  await writeJsonFile("./entries" + dir + "/" + fileName.substring(0, 254) + ".json", schemaResponse)
+  await writeJsonFile(path.join("entries", dir, fileName.substring(0, 254) + ".json"), schemaResponse)
 
   return uid
 }
@@ -169,7 +174,7 @@ async function startProcess () {
       urls: successUrls
     })
 
-    helper.print(`\r`)
+    console.log("\n")
 
     return {
       "total"  : urlsArray.length,
@@ -180,50 +185,47 @@ async function startProcess () {
 }
 
 async function scrapeAll (urls) {
-  let tempUrl
-  let counter       = 0
-  let tempUrlsArray = [...urls]
+  let PageDOM
+  let counter         = 0
+  let failure         = 0
+  const tempUrlsArray = [...urls]
+
+  // Call scrap node api
+  await apiRunner('scrap', actions)
 
   while (tempUrlsArray.length)
   {
-    tempUrl    = tempUrlsArray.pop()
-    currentUrl = tempUrl
-    
-    // Page url
-    relativePageUrl = (new URL(tempUrl)).pathname
+    currentUrl      = tempUrlsArray.pop()
+    relativePageUrl = (new URL(currentUrl)).pathname
 
-    await getOnePage(tempUrl)
+    try {
+      PageDOM = await getHtml(currentUrl)
+      $       = cheerio.load(PageDOM)
+      await schemaReader(config.schemaFile)
+    }
+    catch (err) {
+      failedUrls.push(currentUrl)
+      await errorHandler(err)
+      ++failure
+    }
 
     if (config.import)
       await writeJsonFile('./assetsMapping.json', assetsJson)
 
     ++counter
-    helper.print(`\rCompleted ${counter} records`)
+    helper.print(`\rScrapped ${counter} URL${ counter > 1 && 's' || ''}, success: ${counter-failure}, fail: ${failure}`)
   }
 }
 
-async function getOnePage(url) {
-  if (!url)
-    return
-
-  return getHtml(url)
-  .then( html => {
-    $  = cheerio.load(html)
-    return schemaReader(config.schemaFile)
+async function errorHandler (err) {
+  await logger.log({
+    level   : 'error',
+    message : err.message,
+    stack   : err.stack
   })
-  .catch(err => errorHandler(err))
-}
-
-function errorHandler (err) {
-  logger.log({
-    level: 'error',
-    message: err.message
-  })
-  failedUrls.push(currentUrl)
 }
 
 async function getHtml (url) {
-
   if (!config.ssr)
   {
     const options = {
@@ -232,13 +234,16 @@ async function getHtml (url) {
     return request(options)
   }
     
-  let tab = await browserInstance.newPage()
+  const tab = await browserInstance.newPage()
+
   await tab.goto(url, {
-    waitUntil: 'networkidle0',
-    timeout: 120000,
+    waitUntil : 'networkidle0',
+    timeout   : 120000,
   })
-  let page = await tab.content();
+
+  const page = await tab.content();
   await tab.close();
+  
   return page;
 }
 
@@ -305,22 +310,19 @@ async function assetsHandler (url) {
   if (!url)
     return ""
 
-  let fileName = url.split('/')[url.split('/').length - 1]
-  
-  let checkFileName = fileName.replace(/[,=]/ig,"_")
+  const fileName      = url.split('/')[url.split('/').length - 1]
+  const checkFileName = fileName.replace(/[,=]/ig,"_")
 
   if (assetsJson[checkFileName])
     return assetsJson[checkFileName]
 
-  response = await helper.getAndUploadAssets(url)
-
+  response   = await helper.getAndUploadAssets(url)
   let prefix = "https://images.contentstack.io"
 
   if (/.pdf$/.test(fileName))
     prefix = "https://assets.contentstack.io"
 
-  response.asset.url = prefix + response.asset.url
-
+  response.asset.url                  = prefix + response.asset.url
   assetsJson[response.asset.filename] = {
     uid: response.asset.uid,
     url: response.asset.url
