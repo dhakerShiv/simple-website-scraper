@@ -1,8 +1,8 @@
+const path      = require('path')
 const basePath  = path.dirname(require.main.filename)
 const config    = require(basePath + '/config.json')
 const request   = require('request-promise-native')
 const fs        = require('fs')
-const path      = require('path')
 const apiRunner = require(path.join(__dirname, 'apis')).apiRunner
 
 function login() {
