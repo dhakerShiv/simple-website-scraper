@@ -34,7 +34,8 @@ const actions       = {
   rteHandler,
   importEntries: helper.importEntries,
   getHtml,
-  print: helper.print
+  print: helper.print,
+  seoHandler
 }
 
 async function schemaReader (schemaFile, dependency, contenttypeUid) {
@@ -136,7 +137,7 @@ async function startProcess () {
   }
 
   try {
-    assetsJson = require(basePath + '/assetsMapping.json')
+    assetsJson = require(path.join(basePath, 'assetsMapping.json'))
   } catch (e) {
     assetsJson = {}
   }
@@ -164,13 +165,13 @@ async function startProcess () {
       await helper.logout()
 
     if (failedUrls.length)
-      await writeJsonFile("./errors/failed.json", {
+      await writeJsonFile(path.join(basePath, "./errors/failed.json"), {
         "failed": failedUrls
       })
 
     let successUrls = urlsArray.filter( url => !failedUrls.includes(url)) || []
 
-    await writeJsonFile("./success/success.json", {
+    await writeJsonFile(path.join(basePath, "./success/success.json"), {
       urls: successUrls
     })
 
@@ -192,6 +193,9 @@ async function scrapeAll (urls) {
 
   // Call scrap node api
   await apiRunner('scrap', actions)
+  
+  if (config.import)
+      await writeJsonFile(path.join(basePath, './assetsMapping.json'), assetsJson)
 
   while (tempUrlsArray.length)
   {
@@ -210,7 +214,7 @@ async function scrapeAll (urls) {
     }
 
     if (config.import)
-      await writeJsonFile('./assetsMapping.json', assetsJson)
+      await writeJsonFile(path.join(basePath, './assetsMapping.json'), assetsJson)
 
     ++counter
     helper.print(`\rScrapped ${counter} URL${ counter > 1 && 's' || ''}, success: ${counter-failure}, fail: ${failure}`)
@@ -283,7 +287,7 @@ async function rteHandler (dom) {
 
 function seoHandler () {
   seo = {}
-  seo.title       = $('title').text()
+  seo.title       = $('meta[name=title]').attr("content")
   seo.description = $('meta[name=description]').attr("content")
   seo.keywords    = $('meta[name=keywords]').attr("content")
   return seo
@@ -322,7 +326,7 @@ async function assetsHandler (url) {
   if (/.pdf$/.test(fileName))
     prefix = "https://assets.contentstack.io"
 
-  response.asset.url                  = prefix + response.asset.url
+  response.asset.url                  = path.join(prefix, response.asset.url)
   assetsJson[response.asset.filename] = {
     uid: response.asset.uid,
     url: response.asset.url
