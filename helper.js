@@ -4,12 +4,14 @@ const config    = require(path.join(basePath, 'config.json'))
 const request   = require('request-promise-native')
 const fs        = require('fs')
 const apiRunner = require(path.join(__dirname, 'apis')).apiRunner
+const cdnUrl    = "https://cdn.contentstack.io/v3"
+const serverUrl = "https://api.contentstack.io/v3"
 
 function login() {
   print(`\rLogging in...`)
   const options = { 
     method : 'POST',
-    url    : 'https://api.contentstack.io/v3/user-session',
+    url    : serverUrl + '/user-session',
     headers: {
       'content-type': 'application/json' 
     },
@@ -28,7 +30,7 @@ function logout () {
   print(`\rLogging out...`)
   const options = { 
     method : 'DELETE',
-    url    : 'https://api.contentstack.io/v3/user-session',
+    url    : serverUrl + '/user-session',
     headers: {
       'content-type': 'application/json',
       'authtoken'   : config.authtoken,
@@ -38,10 +40,44 @@ function logout () {
   return request(options)
 }
 
-function importEntries (data, contentTypeUid = config.contentUid, method = "POST") {
+function checkEntry(contentTypeUid, title) {
+  const options = {
+    url: cdnUrl + '/content_types/' + contentTypeUid + '/entries/',
+    method: "GET",
+    headers : {
+      "api_key"      : config.api_key,
+      "authtoken"    : config.authtoken
+    },
+    qs: {
+      locale     : "en-us",
+      query      : {
+        title : title
+      }
+    },
+    json: true
+  }
+
+  return request(options)
+}
+
+async function importEntries (data, contentTypeUid = config.contentUid, method = "POST") {
+  const response = await checkEntry(contentTypeUid, data.title)
+
+  if (response && response.entries && response.entries.length)
+  {
+    response.entry = response.entries[0]
+
+    if (method === "POST")
+      return response
+
+    data.uid = response.entry .uid
+  }
+
+  let url = serverUrl + '/content_types/' + contentTypeUid + '/entries/' + (method == "put" && data.uid || '')
+
   print(`\rImporting Entry...`)
 	const options = {
-		url:'https://api.contentstack.io/v3/content_types/' + contentTypeUid + '/entries/',
+		url,
 		method,
 		headers : {
       "api_key"      : config.api_key,
@@ -73,18 +109,46 @@ function download (uri, filename) {
 	})
 }
 
+function checkAsset (filename) {
+  const options = {
+    url     : cdnUrl + '/assets/',
+    method  : "GET",
+    headers : {
+      "api_key"   : config.api_key,
+      "authtoken" : config.authtoken
+    },
+    qs: {
+      locale : "en-us",
+      query  : {
+        filename : filename
+      }
+    },
+    json: true
+  }
+
+  return request(options)
+}
+
 async function getAndUploadAssets (url) {
   let filename  = url.split("/")[url.split("/").length-1]
 
   if (!/^http|^https|^www./.test(url))
     url = config.baseUrl + url.replace(/^\//, '')
 
-  let headerInfo = await request.head(url)
+  const headerInfo = await request.head(url)
 
   // Call modifyAssetName node api
   const newFilename = await apiRunner('modifyAssetName', {}, {headerInfo, url})
 
   filename = newFilename || filename
+
+  const response = await checkAsset(filename)
+
+  if (response && response.assets && response.assets.length)
+  {
+    response.asset = response.assets[0]
+    return response
+  }
 
   return download(url, filename)
   .then( (data) => uploadAssets(filename))
