@@ -108,7 +108,7 @@ async function schemaReader (schemaFile, dependency, contenttypeUid) {
   if (config.import)
   {
     // Call preImport node api
-    schemaResponse       = await apiRunner('preImport', actions, schemaResponse)
+    schemaResponse       = await apiRunner('preImport', actions, schemaResponse) || schemaResponse
     let importedResponse = await helper.importEntries(schemaResponse, contenttypeUid)
 
     if (dependency)

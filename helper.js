@@ -61,6 +61,9 @@ function checkEntry(contentTypeUid, title) {
 }
 
 async function importEntries (data, contentTypeUid = config.contentUid, method = "POST") {
+  if (!data)
+    return Promise.reject("Data cannot be empty")
+
   const response = await checkEntry(contentTypeUid, data.title)
 
   if (response && response.entries && response.entries.length)
@@ -72,6 +75,9 @@ async function importEntries (data, contentTypeUid = config.contentUid, method =
 
     data.uid = response.entry .uid
   }
+
+  if (method == "put" && !data.uid)
+    return Promise.reject("Uid is required to update an entry")
 
   let url = serverUrl + '/content_types/' + contentTypeUid + '/entries/' + (method == "put" && data.uid || '')
 
