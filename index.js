@@ -326,7 +326,7 @@ async function assetsHandler (url) {
   if (/.pdf$/.test(fileName))
     prefix = "https://assets.contentstack.io"
 
-  response.asset.url                  = path.join(prefix, response.asset.url)
+  response.asset.url                  = prefix + response.asset.url
   assetsJson[response.asset.filename] = {
     uid: response.asset.uid,
     url: response.asset.url
