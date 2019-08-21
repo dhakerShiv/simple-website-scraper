@@ -273,7 +273,7 @@ async function rteHandler (dom) {
   
   for (let i = 0; i < imags.length; i++)
   {
-    src      = $(imags[i]).attr('src')
+    src = $(imags[i]).attr('src')
 
     if ((/\.(gif|jpg|jpeg|tiff|png|exif|bmp|webp|bat|bpg)$/i).test(src))
     {
@@ -314,6 +314,7 @@ async function assetsHandler (url) {
   if (!url)
     return ""
 
+  url = url.trim()
   const fileName      = url.split('/')[url.split('/').length - 1]
   const checkFileName = fileName.replace(/[,=]/ig,"_")
 
@@ -326,7 +327,9 @@ async function assetsHandler (url) {
   if (/.pdf$/.test(fileName))
     prefix = "https://assets.contentstack.io"
 
-  response.asset.url                  = prefix + response.asset.url
+  if (!response.asset.url.includes(prefix))
+    response.asset.url = prefix + response.asset.url
+  
   assetsJson[response.asset.filename] = {
     uid: response.asset.uid,
     url: response.asset.url

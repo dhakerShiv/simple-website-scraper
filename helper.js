@@ -42,7 +42,7 @@ function logout () {
 
 function checkEntry(contentTypeUid, title) {
   const options = {
-    url: cdnUrl + '/content_types/' + contentTypeUid + '/entries/',
+    url: serverUrl + '/content_types/' + contentTypeUid + '/entries/',
     method: "GET",
     headers : {
       "api_key"      : config.api_key,
@@ -117,7 +117,7 @@ function download (uri, filename) {
 
 function checkAsset (filename) {
   const options = {
-    url     : cdnUrl + '/assets/',
+    url     : serverUrl + '/assets/',
     method  : "GET",
     headers : {
       "api_key"   : config.api_key,
